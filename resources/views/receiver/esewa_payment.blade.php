@@ -38,7 +38,7 @@
             <h3>Payment Summary</h3>
             <p><strong>Blood Type:</strong> {{ $bloodRequest['blood_group'] }}</p>
             <p><strong>Quantity:</strong> {{ $bloodRequest['blood_quantity'] }} units</p>
-            <p><strong>Amount:</strong> NPR {{ number_format($bloodRequest['payment'], 2) }}</p>
+            <p><strong>Amount:</strong> NPR {{($bloodRequest['payment']) }}</p>
         </div>
 
         <form id="esewaForm" class="esewa-form" action="https://rc-epay.esewa.com.np/api/epay/main/v2/form" method="POST">

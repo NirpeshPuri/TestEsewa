@@ -462,40 +462,63 @@
 
             // Form submission
             // Form submission
-$('#submitRequestForm').on('submit', function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
+            $('#submitRequestForm').on('submit', function(e) {
+                e.preventDefault();
 
-    $.ajax({
-        url: "{{ route('submit.blood.request') }}",
-        type: "POST",
-        data: formData,
-        processData: false,
-        contentType: false,
-        success: function(response) {
-    if (response.redirect_url) {
-        window.location.href = response.redirect_url;
-    } else {
-        // Handle case where no redirect is provided
-        window.location.reload();
-    }
-},
-        error: function(xhr) {
-            let errorMsg = 'Request failed';
-            try {
-                const response = JSON.parse(xhr.responseText);
-                if (response.message) {
-                    errorMsg = response.message;
-                } else if (response.errors) {
-                    errorMsg = Object.values(response.errors).join('\n');
-                }
-            } catch(e) {
-                console.error('Error parsing error response:', e);
-            }
-            alert('Error: ' + errorMsg);
-        }
-    });
-});
+                const selectedBloodGroup = $('#blood_group').val();
+                const requestedQuantity = parseInt($('#blood_quantity').val());
+                const adminId = $('#adminId').val();
+
+                // Fetch the current stock before submitting
+                $.ajax({
+                    url: `/blood-banks/${adminId}/stock`,
+                    type: 'GET',
+                    success: function(stockData) {
+                        const availableQuantity = stockData[selectedBloodGroup] || 0;
+
+                        if (requestedQuantity > availableQuantity) {
+                            alert(`Requested quantity exceeds available stock. Only ${availableQuantity} units of ${selectedBloodGroup} available.`);
+                            return;
+                        }
+
+                        // Proceed with form submission if stock is sufficient
+                        const formData = new FormData($('#submitRequestForm')[0]);
+
+                        $.ajax({
+                            url: "{{ route('submit.blood.request') }}",
+                            type: "POST",
+                            data: formData,
+                            processData: false,
+                            contentType: false,
+                            success: function(response) {
+                                if (response.redirect_url) {
+                                    window.location.href = response.redirect_url;
+                                } else {
+                                    window.location.reload();
+                                }
+                            },
+                            error: function(xhr) {
+                                let errorMsg = 'Request failed';
+                                try {
+                                    const response = JSON.parse(xhr.responseText);
+                                    if (response.message) {
+                                        errorMsg = response.message;
+                                    } else if (response.errors) {
+                                        errorMsg = Object.values(response.errors).join('\n');
+                                    }
+                                } catch (e) {
+                                    console.error('Error parsing error response:', e);
+                                }
+                                alert('Error: ' + errorMsg);
+                            }
+                        });
+                    },
+                    error: function() {
+                        alert('Failed to verify blood stock before submitting.');
+                    }
+                });
+            });
+
         });
 
 

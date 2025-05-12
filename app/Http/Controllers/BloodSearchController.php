@@ -70,7 +70,7 @@ class BloodSearchController extends Controller
                 }
             ],
             'request_form' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'payment' => 'required|numeric|min:0|max:1500',
+            'payment' => 'required|numeric|min:0',
         ]);
 
         $user = Auth::user();
@@ -112,81 +112,94 @@ class BloodSearchController extends Controller
 
         return view('receiver.payment', [
             'bloodRequest' => $bloodRequest,
-            'amount' => $bloodRequest['payment'],
+            'payment' => $bloodRequest['payment'],
             'blood_quantity' => $bloodRequest['blood_quantity']
         ]);
     }
 
     public function processPayment(Request $request)
     {
+
+        // Get the complete blood request from session
+        $bloodRequest = $request->session()->get('blood_request');
+
+        if (!$bloodRequest) {
+            return redirect()->route('search_blood')->with('error', 'Session expired. Please start over.');
+        }
+
+        // Validate the input
         $validated = $request->validate([
             'blood_quantity' => 'required|integer|min:1|max:5',
-            'payment' => ['required','numeric','min:0','max:1500',
+            'payment' => [
+                'required',
+                'numeric',
                 function($attribute, $value, $fail) use ($request) {
                     $expected = $request->blood_quantity * 500;
-                    if ($value != $expected) {
-                        $fail('Invalid payment amount calculated');
+                    if (abs($value - $expected) > 0.01) {
+                        $fail('Payment amount should be NPR '.$expected.' for '.$request->blood_quantity.' units');
                     }
                 }
             ],
+            // Include validation for all hidden fields
+            'admin_id' => 'required|exists:admins,id',
+            'blood_group' => 'required|in:A+,A-,B+,B-,O+,O-,AB+,AB-',
+            'request_type' => 'required|in:Emergency,Normal,Rare',
+            'request_form' => 'required|string',
         ]);
 
-        // Get current session data
-        $bloodRequest = $request->session()->get('blood_request');
-
-        // Update only the necessary fields
-        $bloodRequest['blood_quantity'] = $validated['blood_quantity'];
-        $bloodRequest['payment'] = $validated['payment'];
-
-        // Save back to session and persist immediately
-        $request->session()->put('blood_request', $bloodRequest);
-        $request->session()->save(); // Force immediate save
-
-        // Debug the updated values
-        \Illuminate\Support\Facades\Log::debug('Updated Payment Data', [
-            'blood_quantity' => $bloodRequest['blood_quantity'],
-            'payment' => $bloodRequest['payment']
+        // Update the session data
+        $updatedRequest = array_merge($bloodRequest, [
+            'blood_quantity' => (int)$validated['blood_quantity'],
+            'payment' => (float)$validated['payment']
         ]);
+
+        $request->session()->put('blood_request', $updatedRequest);
+        $request->session()->save(); // Explicitly save
 
         return redirect()->route('process.esewa.payment');
+
+
     }
 
     public function processEsewaPayment(Request $request)
     {
-        // Get fresh session data
         $bloodRequest = $request->session()->get('blood_request');
 
         if (!$bloodRequest) {
             return redirect()->route('search_blood')->with('error', 'No blood request found');
         }
 
-        // Debug the values being used
-        \Illuminate\Support\Facades\Log::debug('Processing eSewa Payment With', [
-            'blood_quantity' => $bloodRequest['blood_quantity'],
-            'payment' => $bloodRequest['payment']
+        // 🔄 Merge new values instead of overwriting everything
+        $updated = array_merge($bloodRequest, [
+            'blood_quantity' => $request->blood_quantity,
+            'payment' => $request->payment,
         ]);
 
+        $request->session()->put('blood_request', $updated);
+
+        // Now $bloodRequest will have updated data
         $transaction_uuid = uniqid('txn_') . time();
         $secret_key = "8gBm/:&EnhH.1/q";
         $product_code = "EPAYTEST";
 
-        // Use the UPDATED payment amount from session
-        $signature_string = "total_amount={$bloodRequest['payment']},transaction_uuid={$transaction_uuid},product_code={$product_code}";
+        $signature_string = "total_amount={$updated['payment']},transaction_uuid={$transaction_uuid},product_code={$product_code}";
         $signature = base64_encode(hash_hmac('sha256', $signature_string, $secret_key, true));
 
         return view('receiver.esewa_payment', [
-            'amount' => $bloodRequest['payment'],
+            'bloodRequest' => $updated,
+            'amount' => $updated['payment'],
             'tax_amount' => 0,
-            'total_amount' => $bloodRequest['payment'],
+            'total_amount' => $updated['payment'],
             'transaction_uuid' => $transaction_uuid,
             'product_code' => $product_code,
             'success_url' => route('payment.success'),
             'failure_url' => route('payment.failure'),
             'signature' => $signature,
             'signed_field_names' => 'total_amount,transaction_uuid,product_code',
-            'bloodRequest' => $bloodRequest
         ]);
     }
+
+
 
     public function paymentSuccess(Request $request)
     {

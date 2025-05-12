@@ -85,8 +85,9 @@
 
             <div class="form-group">
                 <label for="payment">Payment Amount (NPR)</label>
-                <input type="number" id="payment" name="payment" step="0.01"
-                       value="{{ $bloodRequest['payment'] ?? 0 }}" readonly>
+                <input type="number" id="payment_display" value="{{ $bloodRequest['payment'] ?? 0 }}" readonly>
+                <input type="hidden" id="payment" name="payment" value="{{ $bloodRequest['payment'] ?? 0 }}">
+
             </div>
 
             <!-- Hidden fields for all required data -->
@@ -101,19 +102,20 @@
         </form>
 
         <script>
-            // Update payment amount when quantity changes
-            document.getElementById('blood_quantity').addEventListener('input', function() {
+            document.getElementById('blood_quantity').addEventListener('input', function () {
                 let units = parseInt(this.value) || 0;
                 let payment = units * 500;
-                document.getElementById('payment').value = payment.toFixed(2);
+                document.getElementById('payment_display').value = payment.toFixed(2);
+                document.getElementById('payment').value = payment.toFixed(2); // ✅ real field sent to backend
             });
 
-            // Initialize payment amount on page load
-            document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('DOMContentLoaded', function () {
                 let units = parseInt(document.getElementById('blood_quantity').value) || 0;
                 let payment = units * 500;
-                document.getElementById('payment').value = payment.toFixed(2);
+                document.getElementById('payment_display').value = payment.toFixed(2);
+                document.getElementById('payment').value = payment.toFixed(2); // ✅ real field sent to backend
             });
+
         </script>
 
     </div>

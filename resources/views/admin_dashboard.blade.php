@@ -233,6 +233,7 @@
                 <th>Status</th>
                 <th>Request Form</th>
                 <th>Payment</th>
+                <th>Payment Status</th>
                 <th>Date</th>
                 <th>Actions</th>
             </tr>
@@ -291,6 +292,7 @@
                             @endif
                         </td>
                         <td>{{ $requestItem->payment ? 'Rs '.number_format($requestItem->payment, 2) : 'N/A' }}</td>
+                        <td>{{ $requestItem->payment_status}}</td>
                         <td>{{ $requestItem->created_at->format('M d, Y') }}</td>
                         <td>
                             <form action="{{ route('admin.receiver.update-status', $requestItem->id) }}" method="POST">
