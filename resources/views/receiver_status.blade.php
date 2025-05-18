@@ -140,7 +140,7 @@
             }
         }
     </style>
-
+<!-- receiver status-->
     <div class="request-container">
         <h1 class="request-header">My Blood Requests</h1>
 
