@@ -225,7 +225,7 @@
             }
         }
     </style>
-
+<!-- Receiver Blood Request Form -->
     <div class="center-container">
         <h1>Search for Blood</h1>
         <button id="findNearbyAdmins">Find Nearby Blood Banks</button>
